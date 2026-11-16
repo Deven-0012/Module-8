@@ -1,0 +1,20 @@
+
+========================================================================
+SCENARIO 2 – Stale read (replication delayed)
+========================================================================
+Start: both replicas at stock=10
+  primary={stock=10, version=0}  secondary={stock=10, version=0}  paused=False pending=None
+
+[CTRL ] replication PAUSED (secondary will go stale on next write)
+
+Client updates PRIMARY: stock 10 → 9 (replication still paused) …
+[WRITE] primary   (PRIMARY  ) stock 10 -> 9 version=1
+[REPL ] paused — secondary still at stock=10 version=0; pending=(9, 1)
+
+Reads while secondary is behind:
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=10 version=0
+
+  primary={stock=9, version=1}  secondary={stock=10, version=0}  paused=True pending=(9, 1)
+
+CHECK: Primary returns 9; Secondary temporarily returns older value 10 (stale read).

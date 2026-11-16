@@ -1,0 +1,72 @@
+
+========================================================================
+Module 8 – Replication & Consistency  |  full demo
+========================================================================
+Inventory replicas: 1 Primary + 1 Secondary
+Writes → Primary; replication → Secondary (can be paused)
+
+========================================================================
+SCENARIO 1 – Successful replication
+========================================================================
+Initial state (stock starts at 10 on both replicas):
+  primary={stock=10, version=0}  secondary={stock=10, version=0}  paused=False pending=None
+
+[READ ] primary   (PRIMARY  ) -> stock=10 version=0
+[READ ] secondary (SECONDARY) -> stock=10 version=0
+
+Client writes stock=7 to PRIMARY …
+[WRITE] primary   (PRIMARY  ) stock 10 -> 7 version=1
+[REPL ] secondary updated stock 10->7 version 0->1
+
+After replication:
+  primary={stock=7, version=1}  secondary={stock=7, version=1}  paused=False pending=None
+[READ ] primary   (PRIMARY  ) -> stock=7 version=1
+[READ ] secondary (SECONDARY) -> stock=7 version=1
+
+CHECK: Primary got 7; Secondary eventually got 7; both return the same value.
+
+========================================================================
+SCENARIO 2 – Stale read (replication delayed)
+========================================================================
+Start: both replicas at stock=10
+  primary={stock=10, version=0}  secondary={stock=10, version=0}  paused=False pending=None
+
+[CTRL ] replication PAUSED (secondary will go stale on next write)
+
+Client updates PRIMARY: stock 10 → 9 (replication still paused) …
+[WRITE] primary   (PRIMARY  ) stock 10 -> 9 version=1
+[REPL ] paused — secondary still at stock=10 version=0; pending=(9, 1)
+
+Reads while secondary is behind:
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=10 version=0
+
+  primary={stock=9, version=1}  secondary={stock=10, version=0}  paused=True pending=(9, 1)
+
+CHECK: Primary returns 9; Secondary temporarily returns older value 10 (stale read).
+
+========================================================================
+SCENARIO 3 – Recovery and convergence
+========================================================================
+Before resume:
+  primary={stock=9, version=1}  secondary={stock=10, version=0}  paused=True pending=(9, 1)
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=10 version=0
+
+Resuming replication …
+[CTRL ] replication RESUMED
+[REPL ] secondary updated stock 10->9 version 0->1
+
+After convergence:
+  primary={stock=9, version=1}  secondary={stock=9, version=1}  paused=False pending=None
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=9 version=1
+
+CHECK: Secondary updated to 9; both replicas return the same value again.
+
+========================================================================
+FINAL SNAPSHOT
+========================================================================
+primary={stock=9, version=1}  secondary={stock=9, version=1}  paused=False pending=None
+
+All scenarios completed successfully.

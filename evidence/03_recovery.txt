@@ -1,0 +1,19 @@
+
+========================================================================
+SCENARIO 3 – Recovery and convergence
+========================================================================
+Before resume:
+  primary={stock=9, version=1}  secondary={stock=10, version=0}  paused=True pending=(9, 1)
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=10 version=0
+
+Resuming replication …
+[CTRL ] replication RESUMED
+[REPL ] secondary updated stock 10->9 version 0->1
+
+After convergence:
+  primary={stock=9, version=1}  secondary={stock=9, version=1}  paused=False pending=None
+[READ ] primary   (PRIMARY  ) -> stock=9 version=1
+[READ ] secondary (SECONDARY) -> stock=9 version=1
+
+CHECK: Secondary updated to 9; both replicas return the same value again.
